@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import './RewardToken.sol';
 
-contract RandomisedRewarder {
+contract RandomisedRewarder is VRFConsumerBase {
     bool isParticipant = true;
 
     // Struct to store participant details
@@ -14,7 +14,7 @@ contract RandomisedRewarder {
     }
 
     // Enum for participant activities
-    enum Activity { Racing, Biking, Soccer, Painting }
+    enum Activity { testing, validating, Soccer, Painting }
 
     // Struct to track participant activity and earned values
     struct ParticipantActivity {
@@ -29,10 +29,12 @@ contract RandomisedRewarder {
     mapping(address => ParticipantActivity) participant;
 
     // Event for participant registration
-    event ParticipantRegistered(uint256 id, address participantAddress, Activity activity);
+    event ParticipantRegistered(uint256 indexed id, address indexed participantAddress, Activity indexed activity);
 
     // Event for activity participation
-    event ActivityParticipation(address participantAddress, uint256 valueEarned);
+    event ActivityParticipation(address indexed participantAddress, uint256 indexed valueEarned);
+    event WinnerSelected(address indexed winner, uint256 indexed prizeAmount);
+    event TokensDistributed(address indexed receiver, uint256 indexed amount);
 
     // Constructor
     constructor() {
@@ -64,11 +66,18 @@ contract RandomisedRewarder {
         emit ActivityParticipation(_address, _value);
     }
 
-    // Function to select random winners
-    function randomWinnerSelection() external pure returns (uint256) {
-        // random winner selection logic
-       
+    function randomWinnerSelection() external returns (uint256) {
+        require (allParticipants.length == 0, "RandomisedRewarder: No participants registered");
+
+        uint256 randomIndex = randomResult % allParticipants.length;
+        address selectedWinner = allParticipants[randomIndex].participantAddress;
+        uint256 prizeAmount = airdropRewardCalculation(selectedWinner);
+
+        emit WinnerSelected(selectedWinner, prizeAmount);
+
+        return randomIndex; 
     }
+
 
     // Function to calculate airdrop rewards
     function airdropRewardCalculation(address _address) external view returns (uint256) {
