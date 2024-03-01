@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
-import './VRF.sol';
+pragma solidity 0.8.0;
 
 // Basic ERC20 token contract
 contract RewardToken {
@@ -25,6 +24,7 @@ contract RewardToken {
         require(balanceOf[msg.sender] >= _value, "Insufficient balance");
         balanceOf[msg.sender] -= _value;
         balanceOf[_to] += _value;
+        
         emit Transfer(msg.sender, _to, _value);
         return true;
     }

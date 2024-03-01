@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity 0.8.0;
 
 import './RewardToken.sol';
+import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+
 
 contract RandomisedRewarder is VRFConsumerBase {
+    //from vrf
+    bytes32 internal keyHash;
+    uint256 internal fee;
+    uint256 public randomResult;
+
+    // Chainlink VRF Coordinator address and LINK token address
+    address constant VRF_COORDINATOR = 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625;
+    address constant LINK_TOKEN = 0x779877A7B0D9E8603169DdbD7836e478b4624789;
+
     bool isParticipant = true;
+    address owner;
 
     // Struct to store participant details
     struct Participant {
@@ -14,7 +26,7 @@ contract RandomisedRewarder is VRFConsumerBase {
     }
 
     // Enum for participant activities
-    enum Activity { testing, validating, Soccer, Painting }
+    enum Activity { Racing, Biking, Soccer, Painting }
 
     // Struct to track participant activity and earned values
     struct ParticipantActivity {
@@ -29,18 +41,33 @@ contract RandomisedRewarder is VRFConsumerBase {
     mapping(address => ParticipantActivity) participant;
 
     // Event for participant registration
-    event ParticipantRegistered(uint256 indexed id, address indexed participantAddress, Activity indexed activity);
+    event ParticipantRegistered(uint256 id, address participantAddress, Activity activity);
 
     // Event for activity participation
-    event ActivityParticipation(address indexed participantAddress, uint256 indexed valueEarned);
-    event WinnerSelected(address indexed winner, uint256 indexed prizeAmount);
-    event TokensDistributed(address indexed receiver, uint256 indexed amount);
+    event ActivityParticipation(address participantAddress, uint256 valueEarned);
 
     // Constructor
-    constructor() {
-        // Initialize activities
-        participant[msg.sender].activity = Activity.Biking;
+    constructor() VRFConsumerBase(VRF_COORDINATOR, LINK_TOKEN) {
+        keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; 
+        fee = 0.25 * 10 ** 18; 
+
     }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "not owner");
+        _;
+    }
+
+    function requestRandomness() public payable returns (bytes32 requestId) {
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK tokens in contract");
+
+        return requestRandomness(keyHash, fee);
+    }
+
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
+        randomResult = randomness;
+    }
+    
 
     // Function to register a participant
     function participantRegistration(address _address, Activity _activity) external {
@@ -66,16 +93,11 @@ contract RandomisedRewarder is VRFConsumerBase {
         emit ActivityParticipation(_address, _value);
     }
 
-    function randomWinnerSelection() external returns (uint256) {
-        require (allParticipants.length == 0, "RandomisedRewarder: No participants registered");
-
-        uint256 randomIndex = randomResult % allParticipants.length;
-        address selectedWinner = allParticipants[randomIndex].participantAddress;
-        uint256 prizeAmount = airdropRewardCalculation(selectedWinner);
-
-        emit WinnerSelected(selectedWinner, prizeAmount);
-
-        return randomIndex; 
+    // Function to select random winners
+    function randomWinnerSelection() external onlyOwner {
+        // Ensure there are participants registered
+        require(allParticipants.length > 0, "No participants registered"); 
+        requestRandomness(); // from VRF
     }
 
 
@@ -92,23 +114,11 @@ contract RandomisedRewarder is VRFConsumerBase {
     // Function to distribute ERC20 tokens as airdrop rewards
     function airdropTokenDistribution(address _tokenContract, address _participant, uint256 _amount) external {
         // token distribution
-        TokenERC20 token = TokenERC20(_tokenContract);
+        RewardToken token = RewardToken(_tokenContract);
         token.transfer(_participant, _amount);
     }
 
-    // Function to request randomness from Chainlink VRF
-    function requestRandomness() external {
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK tokens");
-
-        bytes32 requestId = requestRandomness(keyHash, fee);
-        emit RandomnessRequested(requestId);
-    }
-
-    // Function to handle randomness received from Chainlink VRF
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
-        randomResult = randomness;
-        emit RandomnessFulfilled(requestId, randomness);
-    }
+    
 }
 
 
