@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.0;
+pragma solidity 0.8.24;
 
 import './RewardToken.sol';
-import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBase.sol";
+import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
+
 
 
 contract RandomisedRewarder is VRFConsumerBase {
@@ -47,7 +49,7 @@ contract RandomisedRewarder is VRFConsumerBase {
     event ActivityParticipation(address participantAddress, uint256 valueEarned);
 
     // Constructor
-    constructor() VRFConsumerBase(VRF_COORDINATOR, LINK_TOKEN) {
+    constructor(address initialOwner, address tokenAddress) VRFConsumerBase(VRF_COORDINATOR, LINK_TOKEN) {
         keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; 
         fee = 0.25 * 10 ** 18; 
 
